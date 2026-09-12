@@ -1,0 +1,5 @@
+# 2026-09-12에 Python 3.11.9 환경에서 smoke test한 버전
+torch==2.14.0
+torchvision==0.29.0
+numpy==2.4.6
+

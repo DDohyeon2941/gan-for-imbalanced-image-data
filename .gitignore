@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+data/*
+!data/README.md
+checkpoints/*
+!checkpoints/.gitkeep
+results/*
+!results/README.md
+!results/representative_samples/
+!results/representative_samples/.gitkeep
+
+# 과거 실험에서 생성된 개별 이미지: 로컬에는 보존하되 Git에는 올리지 않는다.
+experiments/2019_baselines/original/**/*.jpg
+experiments/2019_baselines/original/**/*.jpeg
+experiments/2019_baselines/original/**/*.png
+
+# 학습 과정 요약 그래프는 개별 생성 이미지가 아니므로 추적한다.
+!experiments/2019_baselines/original/**/loss_graph.png
+

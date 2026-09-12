@@ -1,0 +1,7 @@
+# 2026-09-12에 원본 CLI 및 toy smoke test에 사용한 검증 환경
+torch==2.14.0
+torchvision==0.29.0
+numpy==2.4.6
+matplotlib==3.11.2
+Pillow==12.3.0
+
