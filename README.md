@@ -95,6 +95,93 @@ autoencoder를 사용하며, `bagan_conv.py`는 같은 아이디어를 convoluti
 탐색 코드다. 다만 저장된 코드와 결과만으로 완성된 비교 평가를 확인할 수 없으므로, 검증된 최종
 성과보다는 모델 구조를 탐색한 연구 과정으로 기록한다.
 
+## GAN 모델 구조와 차이
+
+```mermaid
+flowchart LR
+    V[Vanilla GAN<br/>Unconditional generation]
+    C[CGAN<br/>Label conditioning]
+    A[ACGAN<br/>Source + class prediction]
+    W[WGAN<br/>Wasserstein objective]
+    WG[WGAN-GP<br/>Gradient penalty]
+    B[BAGAN<br/>Autoencoder initialization<br/>Class-aware latent sampling]
+    BC[Convolutional BAGAN<br/>Spatial feature learning]
+
+    V -->|클래스 조건 추가| C
+    C -->|Auxiliary classifier 추가| A
+    V -->|학습 objective 변경| W
+    W -->|Weight clipping 대체| WG
+    A -->|불균형 학습을 위한<br/>AE 초기화와 latent 분포| B
+    B -->|Linear를 Conv 구조로 변경| BC
+```
+
+이 도식은 논문의 엄밀한 계보가 아니라 이 저장소에서 비교하고 탐색한 **구조적 차이**를 나타낸다.
+
+| 모델 | Generator 입력 | Discriminator/Critic 출력 | 주요 학습 방식 | 불균형 데이터에서의 한계 |
+| --- | --- | --- | --- | --- |
+| Vanilla GAN | Random noise | Real/Fake | Binary cross entropy | 전체 데이터 분포를 학습하므로 다수 클래스가 생성 분포를 지배할 수 있고 특정 minority class를 선택해 생성하기 어렵다. |
+| CGAN | Noise + class label | Real/Fake + label condition | Conditional adversarial loss | Minority label을 지정할 수 있지만 해당 클래스의 실제 표본이 적으면 조건부 분포 자체를 충분히 학습하기 어렵다. |
+| ACGAN | Noise + class label | Real/Fake와 class prediction | Adversarial loss + auxiliary classification loss | Classifier도 불균형 데이터로 학습되므로 다수 클래스 쪽으로 편향될 수 있으며 minority class gradient가 상대적으로 부족하다. |
+| WGAN | Random noise | Sigmoid 없는 scalar critic score | Wasserstein objective + weight clipping | 학습 안정성을 개선하려는 방식이지만 클래스 조건이 없으면 특정 minority class 생성을 직접 제어하지 못한다. Weight clipping으로 critic 표현력이 제한될 수도 있다. |
+| WGAN-GP | Random noise | Scalar critic score | Wasserstein objective + gradient penalty | Weight clipping 문제를 줄이지만, gradient penalty 자체가 class imbalance를 해결하지는 않는다. 이 저장소 구현도 특정 minority class 조건을 사용하지 않는다. |
+| BAGAN | Class별 latent 분포에서 sampling | 실제 클래스들과 Fake class | Autoencoder 사전학습 후 GAN 초기화 | 전체 클래스의 표현을 공유하면서 minority class 생성을 시도하지만, 소수 표본으로 추정한 class latent mean/covariance가 불안정할 수 있다. |
+| Convolutional BAGAN | Class별 spatial latent 분포 | 실제 클래스들과 Fake class | Convolutional autoencoder + adversarial training | 이미지 공간 구조를 보존하려는 시도지만 latent 차원이 커져 class covariance 계산과 sampling 비용이 급격히 증가한다. |
+
+### 공통 구조
+
+```mermaid
+flowchart LR
+    Z[Random / class-aware latent] --> G[Generator]
+    G --> XG[Generated image]
+    XR[Real image] --> D[Discriminator / Critic]
+    XG --> D
+    D --> ADV[Adversarial signal]
+    ADV --> G
+
+    Y[Class label] -. CGAN / ACGAN / BAGAN .-> G
+    Y -. ACGAN / BAGAN .-> D
+```
+
+### 불균형 데이터에서 GAN이 겪는 문제
+
+```mermaid
+flowchart TD
+    IMB[불균형 학습 데이터] --> MAJ[다수 클래스의 많은 관측값]
+    IMB --> MIN[소수 클래스의 적은 관측값]
+    MAJ --> DM[Discriminator가 다수 클래스 특징을 쉽게 학습]
+    MIN --> SP[Minority 분포 추정 부족]
+    DM --> GR[Generator gradient의 다수 클래스 편향 가능성]
+    SP --> MC[Mode collapse / 낮은 다양성 가능성]
+    SP --> CV[Class latent 통계의 불안정성]
+    GR --> OUT[Minority-class 생성 품질 및 다양성 저하 가능성]
+    MC --> OUT
+    CV --> OUT
+```
+
+GAN은 단순히 데이터 개수를 맞추는 도구가 아니다. Minority class의 관측값이 너무 적으면
+Generator가 그 클래스의 다양한 형태를 학습할 정보가 부족하고, Discriminator 또는 auxiliary
+classifier 역시 다수 클래스에 더 많은 학습 신호를 받는다. 그 결과 다음 문제가 생길 수 있다.
+
+- minority class 대신 다수 클래스와 비슷한 이미지를 생성
+- 적은 수의 minority pattern만 반복하는 mode collapse
+- 시각적으로 그럴듯하지만 지정한 class와 일치하지 않는 conditional generation
+- 원본 minority sample을 거의 복제해 새로운 다양성을 제공하지 못하는 현상
+- 품질이 낮거나 label이 모호한 생성 샘플이 downstream classifier의 label noise로 작용
+
+### BAGAN을 중심으로 탐색한 이유
+
+Vanilla GAN이나 unconditional WGAN은 전체 분포 학습에는 사용할 수 있지만 특정 minority class를
+직접 생성하기 어렵다. CGAN과 ACGAN은 label condition을 제공하지만 minority class에 대한 관측
+자체가 부족하다는 문제는 남는다.
+
+BAGAN은 먼저 전체 데이터로 autoencoder를 학습하고 encoder/decoder의 표현을 GAN 초기화에
+활용한다. 다수 클래스와 소수 클래스가 공유하는 시각적 특징을 먼저 학습한 후, 클래스별 latent
+분포에서 표본을 생성하는 것이 핵심 아이디어다. 2023년 코드에서는 이 방향을 fully connected
+구조로 구현한 뒤 convolutional 구조로 확장해 공간 특징을 보존할 가능성을 탐색했다.
+
+다만 이 설명은 연구 동기와 코드 구조에 관한 것이다. 현재 저장된 결과만으로 BAGAN이 다른
+모델보다 실제로 우수했다고 결론 내리지는 않는다.
+
 ## 실험 파이프라인
 
 ```mermaid
