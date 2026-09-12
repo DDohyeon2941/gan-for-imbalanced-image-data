@@ -90,9 +90,10 @@ flowchart LR
 2019년 프로젝트에는 MNIST/CIFAR-10용 Generator와 Discriminator, 불균형 데이터 생성,
 체크포인트 저장, 합성 이미지 생성, LeNet/ResNet 기반 downstream 평가가 포함되어 있다.
 
-2023년 후속 연구의 `bagan.py`는 fully connected autoencoder를 사용한다. `bagan_conv.py`는 같은
-아이디어를 convolutional autoencoder로 바꾼 탐색 코드다. 이는 검증된 최종 모델이 아니라 모델
-구조를 실험하던 연구 과정으로 기록한다.
+2023년 후속 연구는 최종적으로 BAGAN을 중심으로 진행했다. `bagan.py`는 fully connected
+autoencoder를 사용하며, `bagan_conv.py`는 같은 아이디어를 convolutional autoencoder로 바꾼
+탐색 코드다. 다만 저장된 코드와 결과만으로 완성된 비교 평가를 확인할 수 없으므로, 검증된 최종
+성과보다는 모델 구조를 탐색한 연구 과정으로 기록한다.
 
 ## 실험 파이프라인
 
@@ -130,6 +131,55 @@ flowchart TD
 - 두 시기의 실험은 동일한 설정으로 수행한 직접 비교 실험이 아니다.
 - 저장된 결과만으로 모델별 통계적 우위를 주장할 수 없다.
 - 외부 ACGAN 공개 구현을 참고한 코드는 원본 라이선스와 출처를 함께 보존한다.
+
+### Boundary sample의 의미적 모호성
+
+후속 연구에서 만들고자 한 것은 단순한 minority-class 복제가 아니라 **클래스 decision boundary
+근처의 유용한 샘플**이었다. 그러나 이미지에서는 경계에 있다는 수학적 조건과 사람이 이해할 수
+있는 시각적 의미가 일치하지 않을 수 있다.
+
+```mermaid
+flowchart LR
+    subgraph FEATURE["Feature / latent space"]
+        C1[Cat cluster]
+        B[Decision boundary]
+        C2[Dog cluster]
+        C1 --> B --> C2
+    end
+
+    B --> G[Generator / Decoder]
+
+    subgraph IMAGE["Image space"]
+        I1[의미 있는 희귀 샘플]
+        I2[고양이와 개의 모호한 혼합]
+        I3[실재하지 않는 artifact]
+    end
+
+    G --> I1
+    G --> I2
+    G --> I3
+```
+
+예를 들어 feature space에서 dog와 cat의 중간에 위치한 latent vector를 만들 수는 있지만, 이를
+decode한 이미지가 실제로 어떤 형태여야 하는지는 정의하기 어렵다. 결과가 어려운 실제 사례인지,
+두 클래스가 섞인 비현실적 이미지인지, 단순한 생성 artifact인지 구분할 기준도 필요하다.
+
+이로 인해 다음 한계가 발생한다.
+
+- **경계의 모델 의존성:** decision boundary는 데이터 자체의 고정된 속성이 아니라 사용하는
+  classifier와 feature representation에 따라 달라진다.
+- **정답 label의 불확실성:** 경계 샘플은 어느 클래스에 속하는지 모호하므로 supervised training에
+  사용할 hard label을 정하기 어렵다.
+- **latent와 semantic boundary의 불일치:** latent interpolation의 중간점이 의미적으로도 두 클래스
+  사이의 유효한 이미지라는 보장이 없다.
+- **평가 기준 부족:** 일반적인 GAN 품질 지표만으로 boundary sample이 실제 분류 학습에 유용한지
+  판단하기 어렵다.
+- **오히려 label noise가 될 가능성:** 잘못 생성된 경계 이미지를 추가하면 classifier의 경계를
+  개선하는 대신 학습을 방해할 수 있다.
+
+따라서 향후에는 classifier의 feature space에서 경계를 명시적으로 정의하고, 생성 샘플의 realism과
+boundary proximity를 함께 평가해야 한다. 필요하다면 hard label 대신 confidence 기반 filtering,
+soft label 또는 사람이 검토한 label을 사용하는 방법도 고려할 수 있다.
 
 ## 저장소 구조
 
