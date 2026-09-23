@@ -15,6 +15,8 @@
 
 ## 2023년 개인 후속 연구
 
+아래 초기 실험은 `experiments/2023_model_exploration/branches/main/`에 보존했다.
+
 | 원본 파일 | 실험 역할 |
 | --- | --- |
 | `vanilla_gan_1025.py` | Unconditional GAN 기준 실험 |
@@ -24,3 +26,6 @@
 | `wgan_gp.py` | Gradient penalty를 사용한 Wasserstein GAN 실험 |
 | `bagan.py` | Fully connected BAGAN 계열 구조 실험 |
 | `bagan_conv.py` | Convolutional BAGAN 계열 구조 실험 |
+
+생성 이미지와 downstream 분류 평가가 포함된 후속 코드는
+`experiments/2023_model_exploration/branches/1-feature-a/`에 브랜치 원본 그대로 보존했다.

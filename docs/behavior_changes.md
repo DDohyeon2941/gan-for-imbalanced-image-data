@@ -1,6 +1,8 @@
 # 원본 보존 및 향후 변경 원칙
 
-현재 `experiments/*/original`에 옮긴 Python 파일은 과거 코드를 수정하지 않은 원본이다.
+현재 `experiments/2019_baselines/original`과
+`experiments/2023_model_exploration/branches`에 옮긴 Python 파일은 과거 코드를 수정하지 않은
+원본이다.
 2019년 로컬 원본 32개 파일은 SHA-256 해시 비교를 통해 복사본과 내용이 같음을 확인했다.
 
 - 파일 내용과 학습 로직을 변경하지 않았다.

@@ -10,6 +10,48 @@
 encoder/decoder를 적용해 본 구조 탐색 코드로 정리한다. 완료된 비교 평가를 뒷받침할 자료가
 충분하지 않으므로 성능이 검증된 최종 모델로 표현하지 않는다.
 
+## 브랜치별 코드
+
+| 경로 | 원본 브랜치 | 내용 |
+| --- | --- | --- |
+| `branches/main/` | `main` | Vanilla GAN, CGAN, ACGAN, WGAN, WGAN-GP, 초기 BAGAN 구조 실험 9개 |
+| `branches/1-feature-a/` | `1-feature-a` | CIFAR-10 BAGAN 변형, 이미지 생성, classifier 연결, boundary/edge 실험 등 29개 |
+
+원본 파일은 브랜치별로 구분해 수정 없이 보존했다. 공통 파일이 중복되더라도 서로 다른 시점의
+브랜치 상태를 보여주기 위해 제거하지 않았다.
+
+## 실제 실험 프로세스
+
+`1-feature-a` 브랜치에는 `main`에서 확인되지 않았던 생성 및 downstream 분류 실험이 포함되어
+있다.
+
+```mermaid
+flowchart TD
+    A[불균형 CIFAR-10 구성] --> B[GAN / BAGAN 계열 학습]
+    B --> C[클래스별 합성 이미지 생성 및 저장]
+    A --> D[불균형 데이터 classifier baseline]
+    C --> E[실데이터와 생성 데이터 결합]
+    E --> F[Augmented classifier 학습]
+    D --> G[Baseline 결과]
+    F --> H[GAN augmentation 결과]
+    G --> I[비교]
+    H --> I
+    B --> J[Boundary / edge sample 탐색]
+    J --> K[Boundary sample 기반 classifier 실험]
+```
+
+| 파일 | 역할 |
+| --- | --- |
+| `generate_images_[wgan_gp_conv_cifar10].py` | 학습된 Generator를 이용한 이미지 생성 및 저장 |
+| `gan_to_classifier.py` | GAN 생성 데이터를 classifier 학습 과정에 연결 |
+| `gan_to_classifier_edge.py` | Boundary/edge sample을 이용한 classifier 실험 |
+| `train_classifier.py` | 생성 데이터를 포함한 classifier 학습 |
+| `train_classifier_imb.py` | 불균형 원본 데이터의 classifier baseline |
+| `models_gan.py` | Generator 및 Discriminator 모델 정의 |
+| `models_classifier.py` | Downstream classifier 정의 |
+| `bagan_conv_cifar10*.py` | CIFAR-10 BAGAN 및 구조 변형 실험 |
+| `proposed_wgan_gp_conv_cifar10*.py` | 제안 구조와 TensorBoard 기록 실험 |
+
 ## 연구 한계
 
 연구 목표 중 하나는 클래스 decision boundary 근처의 샘플을 생성하는 것이었다. 그러나 이미지
@@ -25,4 +67,4 @@ encoder/decoder를 적용해 본 구조 탐색 코드로 정리한다. 완료된
 - hard label 대신 soft label을 사용하는 방법 검토
 - 생성 샘플을 추가하기 전 사람 또는 별도 모델을 통한 유효성 검사
 
-당시 저장소의 Python 파일 9개는 `original/`에 수정 없이 보존했다.
+당시 저장소의 Python 파일은 `main` 9개, `1-feature-a` 29개로 나누어 보존했다.

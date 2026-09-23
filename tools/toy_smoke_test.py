@@ -16,7 +16,7 @@ from torchvision.utils import save_image
 
 ROOT = Path(__file__).resolve().parents[1]
 EXP_2019 = ROOT / "experiments" / "2019_baselines" / "original"
-EXP_2023 = ROOT / "experiments" / "2023_model_exploration" / "original"
+EXP_2023 = ROOT / "experiments" / "2023_model_exploration" / "branches"
 
 
 def load_module(name: str, path: Path):

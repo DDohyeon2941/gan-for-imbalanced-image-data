@@ -182,6 +182,32 @@ BAGAN은 먼저 전체 데이터로 autoencoder를 학습하고 encoder/decoder�
 다만 이 설명은 연구 동기와 코드 구조에 관한 것이다. 현재 저장된 결과만으로 BAGAN이 다른
 모델보다 실제로 우수했다고 결론 내리지는 않는다.
 
+### 2023년 생성 및 downstream 평가 코드
+
+초기 `main` 브랜치뿐 아니라 연구 과정의 `1-feature-a` 브랜치도 함께 복구했다. 해당 브랜치에는
+모델 학습 이후의 이미지 저장과 classifier 비교 과정이 포함되어 있다.
+
+```mermaid
+flowchart LR
+    IMB[불균형 CIFAR-10] --> GAN[GAN / BAGAN 계열 학습]
+    GAN --> GEN[클래스별 이미지 생성]
+    IMB --> BASE[불균형 classifier baseline]
+    GEN --> AUG[실데이터 + 생성 데이터]
+    AUG --> ACLF[Augmented classifier]
+    BASE --> CMP[성능 비교]
+    ACLF --> CMP
+    GAN --> EDGE[Boundary / edge sample]
+    EDGE --> ECLF[Edge sample classifier 실험]
+```
+
+- 이미지 생성: `generate_images_[wgan_gp_conv_cifar10].py`
+- GAN과 classifier 연결: `gan_to_classifier.py`
+- Boundary/edge 연결: `gan_to_classifier_edge.py`
+- 불균형 baseline: `train_classifier_imb.py`
+- 생성 데이터 학습: `train_classifier.py`
+
+이 코드는 `experiments/2023_model_exploration/branches/1-feature-a/`에 원본 그대로 보존했다.
+
 ## 실험 파이프라인
 
 ```mermaid
@@ -280,7 +306,9 @@ flowchart TD
     EXP --> E2019[2019_baselines]
     EXP --> E2023[2023_model_exploration]
     E2019 --> O2019[original: 당시 코드 및 체크포인트]
-    E2023 --> O2023[original: 개인 후속 연구 코드]
+    E2023 --> B2023[branches: 브랜치별 연구 코드]
+    B2023 --> M2023[main: 초기 구조 실험]
+    B2023 --> F2023[1-feature-a: 생성·분류·boundary 실험]
 
     DOCS --> SCOPE[연구 범위와 연혁]
     DOCS --> MAP[기존 코드 경로 정리]
@@ -293,16 +321,17 @@ flowchart TD
 | 경로 | 내용 |
 | --- | --- |
 | `experiments/2019_baselines/original/` | 2019년 당시 코드와 LFS 체크포인트 |
-| `experiments/2023_model_exploration/original/` | 2023년 개인 후속 연구 코드 |
+| `experiments/2023_model_exploration/branches/main/` | 2023년 초기 모델 구조 실험 9개 |
+| `experiments/2023_model_exploration/branches/1-feature-a/` | 이미지 생성·분류·boundary 후속 실험 29개 |
 | `docs/` | 연구 범위, 원본 경로, 변경 원칙 |
 | `data/` | 데이터셋 관리 안내 |
 | `results/` | 결과 공개 및 보존 원칙 |
 
 ## 코드 실행에 관하여
 
-`original/`의 Python 파일은 연구 당시 상태를 보존하기 위해 수정하지 않았다. 이 때문에 최신
-환경에서 바로 실행되지 않을 수 있으며 실행 위치에 따라 상대경로 설정이 필요하다. 당시 코드의
-CLI 인자는 각 실험 디렉터리에서 다음 명령으로 확인할 수 있다.
+`original/`과 `branches/`의 Python 파일은 연구 당시 상태를 보존하기 위해 수정하지 않았다. 이
+때문에 최신 환경에서 바로 실행되지 않을 수 있으며 실행 위치에 따라 상대경로 설정이 필요하다.
+당시 코드의 CLI 인자는 각 실험 디렉터리에서 다음 명령으로 확인할 수 있다.
 
 ```bash
 python main.py --help
@@ -318,7 +347,7 @@ Python 3.11 환경에서 검증했다. 원본 코드의 동작을 바꾸는 수�
 
 전체 데이터셋을 받거나 GAN을 학습하지 않고 다음 항목을 빠르게 확인할 수 있다.
 
-- 2019·2023년 원본 Python 파일 41개의 문법
+- 2019·2023년 원본 Python 파일 70개의 문법
 - 2019년 MNIST/CIFAR-10 Vanilla GAN의 forward pass와 출력 shape
 - 2019년 ACGAN Generator/Discriminator의 forward pass와 출력 shape
 - 학습 전 MNIST Generator의 toy 출력 이미지 저장
@@ -344,7 +373,7 @@ python tools/toy_smoke_test.py
 성공하면 다음 메시지가 출력된다.
 
 ```text
-[통과] 원본 Python 파일 문법 검사: 41개
+[통과] 원본 Python 파일 문법 검사: 70개
 [통과] 2019 Vanilla GAN: MNIST/CIFAR-10 forward pass
 [생성] results/toy_samples/untrained_mnist_generator.png
 [통과] 2019 ACGAN: Generator/Discriminator forward pass
@@ -375,7 +404,9 @@ python oversampling.py --help
 않았다.
 
 2023년 원본 파일은 import와 동시에 데이터 로딩 및 학습을 시작하는 실험 스크립트가 포함되어
-있다. 따라서 toy test에서는 문법만 검사하며, 별도 환경 검증 없이 일괄 실행하지 않는다.
+있다. 따라서 toy test에서는 두 브랜치의 문법만 검사하며, 별도 환경 검증 없이 일괄 실행하지
+않는다. 이미지 생성과 classifier 연결 과정은
+`experiments/2023_model_exploration/branches/1-feature-a/`에서 확인할 수 있다.
 
 ## 코드와 결과의 출처
 

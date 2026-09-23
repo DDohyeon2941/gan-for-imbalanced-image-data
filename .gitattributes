@@ -3,6 +3,7 @@
 
 # 당시 파일의 인코딩과 줄바꿈을 포함해 원본 그대로 보존한다.
 experiments/**/original/** -text
+experiments/**/branches/** -text
 
 # 텍스트 파일의 줄바꿈을 저장소에서 통일한다.
 *.md text eol=lf
