@@ -1,25 +1,51 @@
 # 2019년 프로젝트: 기존 GAN 비교 실험
 
-인위적으로 불균형하게 만든 MNIST와 CIFAR-10에서 기존 GAN 모델을 구현하고 비교한 프로젝트다.
-이 프로젝트에서 다룬 문제와 경험이 2023년 개인 후속 연구를 시작하는 배경이 되었다.
+인위적으로 불균형하게 구성한 MNIST와 CIFAR-10에서 기존 GAN을 구현하고, 생성 이미지를 분류 학습에 연결한 프로젝트입니다. 이 경험이 2023년 개인 후속 연구의 출발점이 됐지만 두 실험은 별도 코드베이스입니다.
 
-코드에서 확인한 파이프라인은 다음과 같다.
+## 코드에서 확인되는 흐름
 
-1. 클래스별 데이터 유지 비율을 지정해 불균형 subset을 구성한다.
-2. Vanilla GAN 또는 ACGAN을 학습한다.
-3. 체크포인트와 생성 샘플을 저장한다.
-4. 생성한 minority-class 이미지를 불균형 학습 데이터에 추가한다.
-5. LeNet/ResNet 분류기를 학습하고 accuracy, F1, geometric mean으로 평가한다.
+```mermaid
+flowchart LR
+    D[MNIST / CIFAR-10] --> I[불균형 index]
+    I --> G[Vanilla GAN / ACGAN]
+    G --> C[Checkpoint]
+    C --> S[Synthetic minority images]
+    I --> R[실제 불균형 데이터]
+    S --> M[실제 + 생성 데이터]
+    R --> M
+    M --> E[LeNet / ResNet]
+    E --> K[Accuracy / F1 / G-mean]
+```
 
-과거 결과 파일을 확인하거나 실험을 다시 실행하기 전에는 수치 성과를 기재하지 않는다.
+| 파일 | 역할 |
+| --- | --- |
+| `original/extract_imbalanced_index.py` | 클래스별 유지 비율에 따른 불균형 index 생성 |
+| `original/main.py`, `original/model.py` | Vanilla GAN 학습 및 MNIST/CIFAR-10 모델 |
+| `original/oversampling.py` | checkpoint 기반 합성 이미지 생성 |
+| `original/AC_GAN/main.py`, `model.py` | ACGAN 학습과 모델 |
+| `original/Classification/cnn_main.py` | 생성 데이터를 포함한 downstream 분류 실험 |
+| `original/Classification/cnn_model.py` | LeNet/ResNet 분류기 |
 
-## 이전한 자료
+## 보존 상태
 
-- `original/`: 당시 Python 코드 32개와 실험 결과를 원래 상대경로대로 함께 보존
-- 체크포인트, 생성 이미지, loss graph 등 실험 산출물 4,231개를 로컬에 포함
-- 이전한 실험 산출물 용량: 약 715MB
+- 연구 당시 Python 파일 32개를 원래 상대경로 구조로 보존했습니다.
+- 로컬 아카이브에는 checkpoint 136개와 생성 이미지 4천여 개가 있습니다.
+- checkpoint는 Git LFS로 추적합니다.
+- 대량의 생성 이미지는 로컬에는 보존하지만 GitHub에는 업로드하지 않습니다.
+- dataset 원본, Python cache, IDE 설정과 압축 파일은 추적하지 않습니다.
 
-데이터셋 원본, Python cache, IDE 설정, 압축 파일은 포함하지 않았다.
+산출물의 존재는 당시 학습과 생성이 수행됐다는 증거이지만 모델별 개선을 입증하는 정량 비교표는 아닙니다. 복구된 지표 파일이나 동일 조건 재실행 없이 성능 수치를 만들지 않습니다.
 
-개별 생성 이미지는 로컬에는 유지하지만 GitHub에는 업로드하지 않는다. 체크포인트 파일은 Git
-LFS로 추적하고, loss graph와 문서용 요약 결과만 일반 Git에 포함한다.
+## 최소 실행 확인
+
+저장소 루트의 `tools/toy_smoke_test.py`가 모델 import, forward pass와 toy 이미지 저장을 확인합니다.
+
+```powershell
+python -m pip install -r requirements-legacy-cli.txt
+cd experiments/2019_baselines/original
+python extract_imbalanced_index.py --help
+python main.py --help
+python oversampling.py --help
+```
+
+전체 학습에는 데이터 다운로드, 불균형 index, 상대경로 및 checkpoint 설정이 별도로 필요합니다.

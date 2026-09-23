@@ -1,70 +1,75 @@
 # 2023년 개인 후속 연구
 
-2019년 프로젝트에서 다룬 불균형 데이터 문제를 별도의 개인 연구 코드베이스에서 다시 탐구한
-작업이다.
+2019년 프로젝트에서 경험한 불균형 이미지 생성 문제를 2023년에 별도 코드베이스로 다시 탐색한 개인 연구입니다. 원본 저장소의 두 브랜치를 수정 없이 분리 보존했습니다.
 
-원본 저장소: <https://github.com/DDohyeon2941/gan_for_imbalanced_dataset>
+원본: <https://github.com/DDohyeon2941/gan_for_imbalanced_dataset>
 
-여러 GAN objective와 conditional structure를 실험한 뒤 연구 방향은 최종적으로 BAGAN에
-집중했다. `bagan_conv.py`는 fully connected 구조의 `bagan.py` 이후 convolutional
-encoder/decoder를 적용해 본 구조 탐색 코드로 정리한다. 완료된 비교 평가를 뒷받침할 자료가
-충분하지 않으므로 성능이 검증된 최종 모델로 표현하지 않는다.
+## 브랜치 구성
 
-## 브랜치별 코드
-
-| 경로 | 원본 브랜치 | 내용 |
+| 경로 | 원본 브랜치 | 보존 내용 |
 | --- | --- | --- |
-| `branches/main/` | `main` | Vanilla GAN, CGAN, ACGAN, WGAN, WGAN-GP, 초기 BAGAN 구조 실험 9개 |
-| `branches/1-feature-a/` | `1-feature-a` | CIFAR-10 BAGAN 변형, 이미지 생성, classifier 연결, boundary/edge 실험 등 29개 |
+| `branches/main/` | `main` | Vanilla GAN, CGAN, ACGAN, WGAN, WGAN-GP, BAGAN 구조 실험 9개 |
+| `branches/1-feature-a/` | `1-feature-a` | CIFAR-10 BAGAN 변형, 생성, classifier, boundary/edge 실험 29개 |
 
-원본 파일은 브랜치별로 구분해 수정 없이 보존했다. 공통 파일이 중복되더라도 서로 다른 시점의
-브랜치 상태를 보여주기 위해 제거하지 않았다.
+중복 파일도 삭제하지 않았습니다. 각 디렉터리는 해당 시점의 브랜치 snapshot이며, 파일 내용과 학습 로직은 원본 그대로입니다.
 
-## 실제 실험 프로세스
-
-`1-feature-a` 브랜치에는 `main`에서 확인되지 않았던 생성 및 downstream 분류 실험이 포함되어
-있다.
+## 복구된 전체 실험 과정
 
 ```mermaid
 flowchart TD
-    A[불균형 CIFAR-10 구성] --> B[GAN / BAGAN 계열 학습]
-    B --> C[클래스별 합성 이미지 생성 및 저장]
-    A --> D[불균형 데이터 classifier baseline]
-    C --> E[실데이터와 생성 데이터 결합]
-    E --> F[Augmented classifier 학습]
-    D --> G[Baseline 결과]
-    F --> H[GAN augmentation 결과]
-    G --> I[비교]
-    H --> I
-    B --> J[Boundary / edge sample 탐색]
-    J --> K[Boundary sample 기반 classifier 실험]
+    A[불균형 CIFAR-10] --> B[GAN / BAGAN 학습]
+    B --> C[Generator checkpoint 사용]
+    C --> D[클래스별 합성 이미지 생성·저장]
+    A --> E[불균형 classifier baseline]
+    D --> F[실제 데이터 + 생성 데이터]
+    F --> G[Augmented classifier 학습]
+    E --> H[비교 과정]
+    G --> H
+    B --> I[Boundary / edge sample 탐색]
+    I --> J[Edge sample classifier 실험]
 ```
 
-| 파일 | 역할 |
-| --- | --- |
-| `generate_images_[wgan_gp_conv_cifar10].py` | 학습된 Generator를 이용한 이미지 생성 및 저장 |
-| `gan_to_classifier.py` | GAN 생성 데이터를 classifier 학습 과정에 연결 |
-| `gan_to_classifier_edge.py` | Boundary/edge sample을 이용한 classifier 실험 |
-| `train_classifier.py` | 생성 데이터를 포함한 classifier 학습 |
-| `train_classifier_imb.py` | 불균형 원본 데이터의 classifier baseline |
-| `models_gan.py` | Generator 및 Discriminator 모델 정의 |
-| `models_classifier.py` | Downstream classifier 정의 |
-| `bagan_conv_cifar10*.py` | CIFAR-10 BAGAN 및 구조 변형 실험 |
-| `proposed_wgan_gp_conv_cifar10*.py` | 제안 구조와 TensorBoard 기록 실험 |
+| 단계 | 주요 파일 | 코드에서 확인되는 역할 |
+| --- | --- | --- |
+| GAN 모델 | `models_gan.py` | Generator와 Discriminator 정의 |
+| WGAN-GP | `wgan_gp_conv_cifar10.py`, `wgan_gp_conv_cifar10_new.py` | CIFAR-10 convolutional WGAN-GP 변형 |
+| BAGAN 변형 | `bagan_conv_cifar10*.py` | 기본, binary, edge, projection, upscale 변형 |
+| 제안 구조 | `proposed_wgan_gp_conv_cifar10*.py` | 제안 구조 및 TensorBoard 기록 변형 |
+| 이미지 생성 | `generate_images_[wgan_gp_conv_cifar10].py` | 학습된 Generator로 이미지 생성·저장 |
+| 분류 모델 | `models_classifier.py` | downstream classifier 정의 |
+| Baseline | `train_classifier_imb.py` | 불균형 원본 데이터 classifier 학습 |
+| 증강 평가 | `train_classifier.py`, `gan_to_classifier.py` | 생성 데이터를 포함한 classifier 과정 |
+| 경계 실험 | `implementation_edge.py`, `gan_to_classifier_edge.py` | edge/boundary sample 구성 및 분류 연결 |
 
-## 연구 한계
+## BAGAN과 `bagan_conv`의 차이
 
-연구 목표 중 하나는 클래스 decision boundary 근처의 샘플을 생성하는 것이었다. 그러나 이미지
-공간에서는 dog도 cat도 아닌 중간 형태가 무엇인지 명확하게 정의하기 어렵다. Latent space에서 두
-클래스 사이에 있는 점이 실제로 의미 있는 어려운 사례가 된다는 보장도 없다. 모호하거나
-비현실적인 합성 이미지에 hard label을 부여하면 classifier 학습에서 label noise로 작용할 수 있다.
+```mermaid
+flowchart LR
+    X[Image] --> F[bagan.py<br/>Flatten + Linear encoder]
+    F --> Z1[Vector latent]
+    Z1 --> L[Linear decoder]
+    X --> C[bagan_conv.py<br/>Convolutional encoder]
+    C --> Z2[Spatial feature latent]
+    Z2 --> T[Transposed-convolution decoder]
+```
 
-따라서 boundary sample을 활용하려면 다음이 추가로 필요하다.
+- `bagan.py`: fully connected autoencoder를 중심으로 class별 latent 분포와 GAN 초기화를 탐색합니다.
+- `bagan_conv.py`: 이미지 공간 구조를 다루기 위해 encoder/decoder를 convolutional 계층으로 바꾼 탐색입니다.
+- `bagan_conv_cifar10*.py`: CIFAR-10에 맞춘 여러 조건·출력·edge 변형입니다.
 
-- 특정 classifier의 feature space에서 decision boundary를 명시적으로 정의
-- 생성 이미지의 realism과 boundary proximity를 함께 측정
-- confidence 기반 sample filtering
-- hard label 대신 soft label을 사용하는 방법 검토
-- 생성 샘플을 추가하기 전 사람 또는 별도 모델을 통한 유효성 검사
+이는 구조상 차이를 설명한 것이며, 보존 자료만으로 convolutional 변형의 성능 우위를 주장하지 않습니다.
 
-당시 저장소의 Python 파일은 `main` 9개, `1-feature-a` 29개로 나누어 보존했다.
+## Boundary/edge 연구의 한계
+
+목표는 분류 경계 근처의 유용한 샘플을 생성하는 것이었지만 이미지 공간에서 “두 클래스의 중간”은 명확한 정답이 아닙니다.
+
+- decision boundary는 선택한 classifier와 feature space에 따라 달라집니다.
+- latent 중간점이 의미 있는 이미지 의미론과 일치한다는 보장이 없습니다.
+- 생성물이 유효한 hard example인지, 모호한 혼합인지, artifact인지 구별해야 합니다.
+- 모호한 생성물에 hard label을 주면 label noise가 될 수 있습니다.
+
+성능을 주장하려면 realism, diversity, boundary proximity, label reliability와 downstream 성능을 함께 평가해야 합니다. 현재 저장소에는 이를 완결된 동일 조건 실험으로 입증할 자료가 충분하지 않습니다.
+
+## 실행 주의사항
+
+이 디렉터리의 파일은 2023년 원본 snapshot입니다. 일부 스크립트는 import와 동시에 데이터 로딩이나 학습을 시작하고 로컬 상대경로를 전제로 합니다. 원본 보존을 위해 CLI나 경로를 직접 고치지 않았으며, 현재 toy test는 문법 검사만 수행합니다.
